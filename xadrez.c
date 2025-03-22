@@ -1,5 +1,4 @@
 #include "dumb_moves.h"
-
 int main() {
   char Board[9][9];
   create_board(Board);
@@ -17,73 +16,92 @@ int main() {
       printf("Jogada do segundo Jogador \n");
       f_player = false;
     }
+
+    struct PieceRules piece;
     bool horse_atack = false;
     bool rook_atack = false;
     print_board(Board);
     printf("Digite seu movimento em Notação Algebrica : ");
     fgets(movement, 6, stdin);
     movement[strcspn(movement, "\n")] = 0;  // Remove a nova linha
+
     int movement_size = strlen(movement);
     
     if(movement_size == 2){
-      int pawn_y_target = (int) movement[1] - '0';
-      pawn_y_target = 9- pawn_y_target;
-      int pawn_x_target = (int) toupper(movement[0]) - '@';
-      counter += pawn_move(f_player,pawn_y_target,pawn_x_target, Board);
-      
+      piece.y_target = 9 - ((int) movement[1] - '0');
+      piece.x_target = (int) toupper(movement[0]) - '@';
+      piece.name = 'p';
+      if(f_player){
+	piece.name = 'P';
+      }
+      counter += pawn_move(f_player, &piece, Board);
     }else if (movement_size == 3){
-	int pawn_y_target = (int) movement[2] - '0';
-	pawn_y_target = 9- pawn_y_target;
-	int pawn_x_target = (int) toupper(movement[1]) - '@';
-	bool capture = false;
-	char piece;
-	if(Board[pawn_y_target][pawn_x_target] == '.'){
+        piece.y_target = 9 - ((int) movement[2] - '0');
+	piece.x_target = (int) toupper(movement[1]) - '@';
+	piece.capture = false;
+	piece.name;
+
+	if(Board[piece.y_target][piece.x_target] == '.'){
 	  if (f_player){
-	    piece = toupper(movement[0]);
+	    piece.name = toupper(movement[0]);
 	  }else{
-	    piece = tolower(movement[0]);
+	    piece.name = tolower(movement[0]);
 	  }
 	}
 	
 	if (tolower(movement[0]) == 'n'){
-	  counter += knight_move(f_player, pawn_y_target, pawn_x_target, Board, horse_pos);
+	  counter += knight_move(f_player, &piece, Board, horse_pos);
 	}else if(tolower(movement[0]) == 'r'){
-	  counter += rook_move(f_player, pawn_y_target, pawn_x_target, Board, capture, piece);
+	  counter += rook_move(f_player, &piece,Board);
 	}else if(tolower(movement[0]) == 'b'){
-	  counter += bishop_move(f_player, pawn_y_target, pawn_x_target, Board, piece);
+	  counter += bishop_move(f_player, &piece, Board);
 	}else if (tolower(movement[0]) == 'k'){
-	  bool house_attack = check_attacks(f_player, pawn_y_target, pawn_x_target, Board, king_pos, horse_pos);
-	  counter += king_move(f_player, pawn_y_target, pawn_x_target, Board, king_pos, house_attack);
+	  bool house_attack = check_attacks(f_player, &piece, Board, king_pos, horse_pos);
+	  counter += king_move(f_player, &piece, Board, king_pos, house_attack);
 	}else if(tolower(movement[0]) == 'q'){
-	  counter += queen_move(f_player, pawn_y_target,pawn_x_target, capture, Board, piece);
+	  counter += queen_move(f_player, &piece, Board);
 	}
-       }else if (movement_size == 4){
-	//printf("chegou aqui");
-	int pawn_y_target = (int) movement[3] - '0';
-	pawn_y_target = 9- pawn_y_target;
-	int pawn_x_target = (int) toupper(movement[2]) - '@';
-	int pawn_x_attacker = (int) toupper(movement[0]) - '@';
-	char piece;
+
+    }else if (movement_size == 4){
+
+        piece.y_target = 9 - ((int) movement[3] - '0');
+	piece.x_target = (int) toupper(movement[2]) - '@';
+	piece.x_origin = (int) toupper(movement[0]) - '@';
+	piece.name;
 	int sum;
-	if (Board[pawn_y_target][pawn_x_target] != '.' && tolower(movement[1]) == 'x'){
+	if (Board[piece.y_target][piece.x_target] != '.' && tolower(movement[1]) == 'x'){
+
 	  capture = true;
+
 	  if(!f_player){
-	    piece = toupper(movement[0]);
-	    sum = -1;
+	    piece.name = toupper(movement[0]);
+	    if(Board[piece.y_target-1][piece.x_origin] == piece.name){
+	      Board[piece.y_target][piece.x_target] = piece.name;
+	      Board[piece.y_target-1][piece.x_origin] = '.';
+	      counter++;
+	    }
 	  }else{
-	    piece = tolower(movement[0]);
-	    sum = +1;
+	    piece.name = tolower(movement[0]);
+	    if(Board[piece.y_target+1][piece.x_origin] == piece.name){
+	      Board[piece.y_target][piece.x_target] = piece.name;
+	      Board[piece.y_target+1][piece.x_origin] = '.';
+	      counter++;
+	    }
 	  }
+	  
 	  if(tolower(movement[0]) == 'n'){
-	    counter += knight_move(f_player, pawn_y_target, pawn_x_target, Board, horse_pos);
+	    counter += knight_move(f_player, &piece, Board, horse_pos);
+
 	  }else if(tolower(movement[0]) == 'r'){
-	    counter += rook_move(f_player, pawn_y_target, pawn_x_target, Board, capture, piece);
+	    counter += rook_move(f_player, &piece, Board);
+
 	  }else if(tolower(movement[0]) == 'k'){
-	    bool house_attack = check_attacks(f_player, pawn_y_target, pawn_x_target, Board, king_pos, horse_pos);
-	    king_move(f_player, pawn_y_target, pawn_x_target, Board, king_pos, house_attack);
-	  }else if(Board[pawn_y_target+sum][pawn_x_attacker] == piece){
-	    Board[pawn_y_target][pawn_x_target] = piece;
-	    Board[pawn_y_target+sum][pawn_x_attacker] = '.';
+	    bool house_attack = check_attacks(f_player, &piece, Board, king_pos, horse_pos);
+	    king_move(f_player, &piece, Board, king_pos, house_attack);
+
+	  }else if(Board[piece.y_target+sum][piece.x_origin] == piece.name){
+	    Board[piece.y_target][piece.x_target] = piece.name;
+	    Board[piece.y_target][piece.x_origin] = '.';
 	    counter++;
 	  }
 	  
