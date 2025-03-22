@@ -11,6 +11,8 @@ struct PieceRules{
   int x_origin;
   bool capture;
   char name;
+  //example 1: up, 2:right, 3: down, 4:left
+  int change_pos;
 };
 int horse_pos[8][2] = {{ 2, 1},
 		       {-2,-1},
@@ -84,18 +86,16 @@ void create_board(char Board[9][9]){
     }
   }
 }
-bool found_diag(struct PieceRules *Bishop_Queen, char Board[9][9], int bishop_pos[2]){
-  bishop_pos[0] = -1;
-  bishop_pos[1] = -1;
-  bool found_flag =false;
+bool found_diag(struct PieceRules *Bishop_Queen, char Board[9][9]){
+  bool found_flag = false;
   // Diagonal front-right
   for (int i = Bishop_Queen->y_target + 1, j = Bishop_Queen->x_target + 1; i < 9 && j < 9; i++, j++) {
-    if(Board[i][j] != '.' && Board[i][j] !=Bishop_Queen->name){
+    if(Board[i][j] != '.' && Board[i][j] !=Bishop_Queen->name && !Bishop_Queen->capture){
       break;
     }
     if (Board[i][j] == Bishop_Queen->name) {
-      bishop_pos[0]=i;
-      bishop_pos[1]=j;
+      Bishop_Queen->y_origin=i;
+      Bishop_Queen->x_origin=j;
       found_flag =true;
       break;
     }
@@ -104,12 +104,12 @@ bool found_diag(struct PieceRules *Bishop_Queen, char Board[9][9], int bishop_po
   // Diagonal front-left
   if(found_flag == false){
     for (int i = Bishop_Queen->y_target + 1, j = Bishop_Queen->x_target - 1; i < 9 && j >= 0; i++, j--) {
-      if(Board[i][j] != '.' && Board[i][j] !=Bishop_Queen->name){
+      if(Board[i][j] != '.' && Board[i][j] !=Bishop_Queen->name && !Bishop_Queen->capture){
 	break;
       }
       if (Board[i][j] == Bishop_Queen->name) {
-	bishop_pos[0]=i;
-	bishop_pos[1]=j;
+	Bishop_Queen->y_origin=i;
+	Bishop_Queen->x_origin=j;
 	found_flag =true;
 	break;
       }
@@ -118,12 +118,12 @@ bool found_diag(struct PieceRules *Bishop_Queen, char Board[9][9], int bishop_po
   // Diagonal back-right
   if(found_flag == false){ 
     for (int i = Bishop_Queen->y_target - 1, j = Bishop_Queen->x_target + 1; i >= 0 && j < 9; i--, j++) {
-      if(Board[i][j] != '.' && Board[i][j] !=Bishop_Queen->name){
+      if(Board[i][j] != '.' && Board[i][j] !=Bishop_Queen->name && !Bishop_Queen->capture){
 	break;
       }
       if (Board[i][j] == Bishop_Queen->name) {
-	bishop_pos[0]=i;
-	bishop_pos[1]=j;
+	Bishop_Queen->y_origin=i;
+	Bishop_Queen->x_origin=j;
 	found_flag =true;
 	break;
       }
@@ -132,12 +132,12 @@ bool found_diag(struct PieceRules *Bishop_Queen, char Board[9][9], int bishop_po
   // Diagonal back-left
   if(found_flag == false){
     for (int i = Bishop_Queen->y_target - 1, j = Bishop_Queen->x_target - 1; i >= 0 && j >= 0; i--, j--) {
-      if(Board[i][j] != '.' && Board[i][j] !=Bishop_Queen->name){
+      if(Board[i][j] != '.' && Board[i][j] !=Bishop_Queen->name && !Bishop_Queen->capture){
 	break;
       }
       if (Board[i][j] == Bishop_Queen->name) {
-	bishop_pos[0]=i;
-	bishop_pos[1]=j;
+	Bishop_Queen->y_origin=i;
+	Bishop_Queen->x_origin=j;
 	found_flag =true;
 	break;
       }
@@ -150,12 +150,11 @@ bool found_diag(struct PieceRules *Bishop_Queen, char Board[9][9], int bishop_po
 }
 int bishop_move(bool f_player, struct PieceRules *Bishop ,char Board[9][9]){
   bool found_flag = false;
-  int bishop_pos[2];
   
-  found_flag = found_diag(Bishop, Board, bishop_pos);
+  found_flag = found_diag(Bishop, Board);
   if(found_flag){
     Board[Bishop->y_target][Bishop->x_target] = Bishop->name;
-    Board[bishop_pos[0]][bishop_pos[1]] = '.';
+    Board[Bishop->y_origin][Bishop->x_origin] = '.';
     return 1;
   }
   return 0;
@@ -163,15 +162,19 @@ int bishop_move(bool f_player, struct PieceRules *Bishop ,char Board[9][9]){
 void make_L(struct PieceRules *Horse, char Board[9][9], int horse_pos[8][2]){
   for(int i=0;i<8;i++){
     if(Board[Horse->y_target + horse_pos[i][0]][Horse->x_target + horse_pos[i][1]] == Horse->name){
-      Board[Horse->y_target + horse_pos[i][0]][Horse->x_target + horse_pos[i][1]] = '.';
-      Board[Horse->y_target][Horse->x_target] = Horse->name;
-      break;
+      Horse->y_origin += horse_pos[i][0];
+      Horse->x_origin += horse_pos[i][1];
     }
   }
 }
 int knight_move(bool f_player, struct PieceRules *Horse, char Board[9][9], int horse_pos[8][2]){
-  make_L(Horse, Board, horse_pos);
-  return 1;
+  make_L(Horse,Board,horse_pos);
+  if(Board[Horse->y_origin][Horse->x_origin] == Horse->name){
+    Board[Horse->y_origin][Horse->x_origin] = '.';
+    Board[Horse->y_target][Horse->x_target] = Horse->name;
+    return 1;
+  }
+  return 0;
 }
 void kings_square(struct PieceRules *King, char Board[9][9], int king_pos[8][2]){
 
@@ -206,11 +209,7 @@ bool check_attacks(bool f_player, struct PieceRules *King, char Board[9][9], int
     king_char = 'K';
     sum = +1;
   }
-  if(Board[King->y_target+sum][King->x_target+1] == pawn_char){
-    return true;
-  }
-    
-  if(Board[King->y_target+sum][King->x_target-1] == pawn_char){
+  if(Board[King->y_target+sum][King->x_target-1] == pawn_char || Board[King->y_target+sum][King->x_target+1] == pawn_char){
     return true;
   }
   for(int i = 0; i < 8;i++) {
@@ -230,7 +229,7 @@ bool check_attacks(bool f_player, struct PieceRules *King, char Board[9][9], int
       return true;
     }
   }
-  if(found_diag(King, Board, bishop_pos) == true){
+  if(found_diag(King, Board) == true){
     return true;
   }
     return false;
@@ -239,19 +238,60 @@ bool check_attacks(bool f_player, struct PieceRules *King, char Board[9][9], int
 int found_line(struct PieceRules *Rook_Queen, char Board[9][9]){
   bool found_piece = false;
   int origin_value;
-  for(int i=1;i<9; i++){
-    if(found_piece == true){
-      return 0;
+  for(int i=Rook_Queen->y_target;i>1; i--){
+    if(Board[i][Rook_Queen->x_target] != Rook_Queen->name && Board[i][Rook_Queen->x_target] != '.' && !Rook_Queen->capture){
+      break;
     }
     if(Board[i][Rook_Queen->x_target] == Rook_Queen->name){
-      found_piece = true;
+      found_piece=true;
+      Rook_Queen->change_pos = 3;
       origin_value = i;
-    }
-    if(Board[Rook_Queen->y_target][i] == Rook_Queen->name){
-      found_piece = true;
-      origin_value = i;
+      break;
     }
   }
+  
+  if(!found_piece){
+    for(int i=Rook_Queen->y_target;i<9;i++){
+      if(Board[i][Rook_Queen->x_target] != Rook_Queen->name && Board[i][Rook_Queen->x_target] != '.' && !Rook_Queen->capture){
+	break;
+      }
+      if(Board[i][Rook_Queen->x_target] == Rook_Queen->name){
+	found_piece=true;
+	Rook_Queen->change_pos = 1;
+	origin_value = i;
+	break;
+      }
+    }
+  }
+  
+  if(!found_piece){
+    for(int i=Rook_Queen->x_target;i>1;i--){
+      if(Board[Rook_Queen->y_target][i] != Rook_Queen->name && Board[Rook_Queen->y_target][i] != '.' && !Rook_Queen->capture){
+	break;
+      }
+      if(Board[Rook_Queen->y_target][i] == Rook_Queen->name){
+	found_piece=true;
+	Rook_Queen->change_pos = 4;
+	origin_value = i;
+	break;
+      }
+    }
+  }
+  
+  if(!found_piece){
+    for(int i=1;i<Rook_Queen->x_target;i++){
+      if(Board[Rook_Queen->y_target][i] != Rook_Queen->name && Board[Rook_Queen->y_target][i] != '.' && !Rook_Queen->capture){
+	break;
+      }
+      if(Board[Rook_Queen->y_target][i] == Rook_Queen->name){
+	found_piece=true;
+	Rook_Queen->change_pos = 2;
+	origin_value = i;
+	break;
+      }
+    }
+  }
+  
   if(found_piece == true){
     return origin_value;
   }
@@ -259,16 +299,17 @@ int found_line(struct PieceRules *Rook_Queen, char Board[9][9]){
   
 }
 int rook_move(bool f_player, struct PieceRules *Rook, char Board[9][9]){
-  int delta = 18;
   int origin;
   origin = found_line(Rook, Board);
-  if(origin - delta < 0 ){
+  if(Rook->change_pos % 2  == 0){
     Board[Rook->y_target][origin] = '.';
-    Board[Rook->y_target][Rook->x_target] = Rook->name;
-  }else{
+  }else if(Rook->change_pos % 2 !=0){
     Board[origin][Rook->x_target] = '.';
-    Board[Rook->y_target][Rook->x_target] = Rook->name;
+  }else{
+    return 0;
   }
+  
+  Board[Rook->y_target][Rook->x_target] = Rook->name;
   
   return 1;
 }
@@ -291,6 +332,7 @@ int pawn_advance(struct PieceRules *Pawn, char Board[9][9], int sum, int mul, in
   }
   return 0;
 }
+
 int pawn_move(bool f_player,struct PieceRules *Pawn, char Board[9][9]){
   if(Board[Pawn->y_target][Pawn->x_target] == '.'){
     if(f_player){
@@ -322,3 +364,4 @@ int pawn_move(bool f_player,struct PieceRules *Pawn, char Board[9][9]){
   }
   return 0;
 }
+
